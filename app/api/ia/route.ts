@@ -1,8 +1,8 @@
-import { GoogleGenerativeAI } from "@google/generative-ai"
+import Groq from "groq-sdk"
 import { supabase } from "@/lib/supabase"
 import { NextRequest, NextResponse } from "next/server"
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
 
 async function getContext() {
   const [{ data: transactions }, { data: bills }, { data: insights }] = await Promise.all([
@@ -23,13 +23,16 @@ async function getContext() {
 }
 
 export async function POST(req: NextRequest) {
-  const { message } = await req.json()
+  try {
+    const { message } = await req.json()
+    const context = await getContext()
 
-  const context = await getContext()
-
-  const model = genAI.getGenerativeModel({
-    model: "gemini-1.5-flash",
-    systemInstruction: `Você é a IA do SAVRA, um sistema de gestão financeira empresarial.
+    const completion = await groq.chat.completions.create({
+      model: "llama-3.3-70b-versatile",
+      messages: [
+        {
+          role: "system",
+          content: `Você é a IA do SAVRA, um sistema de gestão financeira empresarial.
 Responda sempre em português, de forma direta e objetiva, em no máximo 3 linhas.
 Dados atuais da empresa:
 - Receita do mês: R$ ${context.receita.toLocaleString("pt-BR")}
@@ -37,10 +40,15 @@ Dados atuais da empresa:
 - Fluxo de caixa: R$ ${context.fluxo.toLocaleString("pt-BR")}
 - Contas a pagar: ${JSON.stringify(context.bills)}
 - Insights: ${JSON.stringify(context.insights)}`,
-  })
+        },
+        { role: "user", content: message },
+      ],
+    })
 
-  const result = await model.generateContent(message)
-  const text = result.response.text()
-
-  return NextResponse.json({ response: text })
+    const text = completion.choices[0].message.content ?? ""
+    return NextResponse.json({ response: text })
+  } catch (error) {
+    console.error("ERRO NA IA:", error)
+    return NextResponse.json({ error: String(error) }, { status: 500 })
+  }
 }
