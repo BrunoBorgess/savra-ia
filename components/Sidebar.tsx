@@ -1,7 +1,7 @@
 "use client"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, Bot, TrendingUp, Receipt, DollarSign, BarChart2 } from "lucide-react"
+import { LayoutDashboard, Bot, TrendingUp, Receipt, DollarSign, BarChart2, CircleAlert } from "lucide-react"
 
 const navItems = [
   { icon: <LayoutDashboard size={16} />, label: "Dashboard", href: "/dashboard" },
@@ -10,7 +10,9 @@ const navItems = [
   { icon: <Receipt size={16} />, label: "Contas a Pagar", href: "/contas" },
   { icon: <DollarSign size={16} />, label: "Contas a Receber", href: "/contas-receber" },
   { icon: <BarChart2 size={16} />, label: "Relatórios", href: "/relatorios" },
+  { icon: <CircleAlert size={16} />, label: "Diagnóstico da Empresa", href: "/diagnostico" },
 ]
+
 
 export default function Sidebar() {
   const pathname = usePathname()

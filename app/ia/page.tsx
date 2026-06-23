@@ -8,7 +8,7 @@ export default function IAPage() {
       <Sidebar />
       <div className="flex flex-col flex-1 overflow-hidden">
         <TopBar />
-        <IAChat />s
+        <IAChat />
       </div>
     </div>
   )

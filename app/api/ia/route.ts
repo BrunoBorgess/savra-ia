@@ -1,37 +1,54 @@
+import Groq from "groq-sdk"
 import { supabase } from "@/lib/supabase"
 import { NextRequest, NextResponse } from "next/server"
 
-// PATCH /api/contas/[id] — atualiza uma conta (ex: marcar como paga)
-export async function PATCH(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id } = await params
-  const body = await req.json()
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
 
-  const { data, error } = await supabase
-    .from("bills")
-    .update(body)
-    .eq("id", id)
-    .select()
-    .single()
+async function getContext() {
+  const [{ data: transactions }, { data: bills }, { data: insights }] = await Promise.all([
+    supabase.from("transactions").select("*"),
+    supabase.from("bills").select("*").eq("paid", false),
+    supabase.from("insights").select("*"),
+  ])
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json(data)
+  const receita = transactions
+    ?.filter((t) => t.type === "income")
+    .reduce((acc, t) => acc + t.amount, 0) ?? 0
+
+  const despesas = transactions
+    ?.filter((t) => t.type === "expense")
+    .reduce((acc, t) => acc + t.amount, 0) ?? 0
+
+  return { receita, despesas, fluxo: receita - despesas, bills, insights }
 }
 
-// DELETE /api/contas/[id] — remove uma conta
-export async function DELETE(
-  _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id } = await params
+export async function POST(req: NextRequest) {
+  try {
+    const { message } = await req.json()
+    const context = await getContext()
 
-  const { error } = await supabase
-    .from("bills")
-    .delete()
-    .eq("id", id)
+    const completion = await groq.chat.completions.create({
+      model: "llama-3.3-70b-versatile",
+      messages: [
+        {
+          role: "system",
+          content: `Você é a IA do SAVRA, um sistema de gestão financeira empresarial.
+Responda sempre em português, de forma direta e objetiva, em no máximo 3 linhas.
+Dados atuais da empresa:
+- Receita do mês: R$ ${context.receita.toLocaleString("pt-BR")}
+- Despesas do mês: R$ ${context.despesas.toLocaleString("pt-BR")}
+- Fluxo de caixa: R$ ${context.fluxo.toLocaleString("pt-BR")}
+- Contas a pagar: ${JSON.stringify(context.bills)}
+- Insights: ${JSON.stringify(context.insights)}`,
+        },
+        { role: "user", content: message },
+      ],
+    })
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ success: true })
+    const text = completion.choices[0].message.content ?? ""
+    return NextResponse.json({ response: text })
+  } catch (error) {
+    console.error("ERRO NA IA:", error)
+    return NextResponse.json({ error: String(error) }, { status: 500 })
+  }
 }
