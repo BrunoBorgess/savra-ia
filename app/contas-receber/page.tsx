@@ -275,7 +275,7 @@ export default function ContasReceberPage() {
                       key={receivable.id}
                       className="grid grid-cols-[1fr_130px_130px_110px_80px] gap-4 px-5 py-3.5 items-center hover:bg-white/[0.02] transition-colors"
                     >
-                      <span className="text-sm text-white/80 truncate">{receivable.client}</span>
+                      <span className="text-sm text-white/80 truncate">{receivable.title}</span>
 
                       <span className="text-xs text-white/40">
                         {new Date(receivable.due_date + "T00:00:00").toLocaleDateString("pt-BR")}

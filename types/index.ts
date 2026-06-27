@@ -7,6 +7,15 @@ export type Transaction = {
   created_at: string
 }
 
+export type Receivable = {
+  id: string
+  title: string
+  amount: number
+  due_date: string
+  received: boolean
+  created_at?: string
+}
+
 export type Bill = {
   id: string
   name: string
